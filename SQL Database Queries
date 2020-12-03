@@ -1,0 +1,114 @@
+--Find customers who have not placed any orders:
+SELECT CustomerId
+FROM  Customer_T
+WHERE customer_t.CustomerId not in (SELECT customerid FROM Order_T);
+
+
+--List product line names and for each product line number of products and average product price.
+SELECT pl.ProductLineName, COUNT(p.ProductID),AVG(p.ProductStandardPrice)
+FROM ProductLine_T pl,Product_T p
+WHERE p.ProductLineID=pl.ProductLineID
+GROUP BY pl.ProductLineID,pl.ProductLineName
+
+--Modify previous query to include only those product lines the average price of which is higher than $200.
+SELECT pl.ProductLineName, COUNT(p.ProductID),AVG(p.ProductStandardPrice)
+FROM ProductLine_T pl,Product_T p
+WHERE p.ProductLineID=pl.ProductLineID
+GROUP BY pl.ProductLineID,pl.ProductLineName
+HAVING AVG(p.ProductStandardPrice)>200
+
+
+--List the names and number of employees supervised (label this value HeadCount) for all the supervisors who supervise more than two employees: 
+SELECT s.EmployeeName,COUNT(e.employeeID) AS 'HeadCount'
+FROM Employee_T s, Employee_T e
+WHERE s.EmployeeID=e.EmployeeSupervisor
+GROUP BY s.EmployeeName
+HAVING COUNT(e.employeeID)>2;
+
+--Display order number, customer number, order date and items ordered for some customer with CustomerID=4
+SELECT 	o.OrderID, 
+o.CustomerID,
+o.OrderDate,
+ol.ProductID,
+p.ProductDescription,
+ol.OrderedQuantity
+FROM OrderLine_T ol, Order_T o, Product_T p
+WHERE 	o.OrderID=ol.OrderID AND
+ol.ProductID=p.ProductID AND
+o.CustomerID = 4;
+
+--Display the orders its standard price, and total price for each item ordered:
+SELECT 	ol.ProductID,
+p.ProductStandardPrice, 
+ol.OrderedQuantity*p.ProductStandardPrice AS LineTotal
+FROM Product_T p,OrderLine_T ol
+WHERE p.ProductID = ol.ProductID AND
+ol.OrderID = 1;
+
+--Display the ID and the total values of the orders with the total value greater than 1000
+SELECT 	ol.OrderID,
+SUM(ol.OrderedQuantity*p.ProductStandardPrice) AS 'Total Price'
+FROM Product_T p,OrderLine_T ol
+WHERE p.ProductID = ol.ProductID
+GROUP BY ol.OrderID
+HAVING SUM(ol.OrderedQuantity*p.ProductStandardPrice)>1000;
+
+
+--Total number of employees working at each work center
+SELECT	w.WorkcenterID, 
+COUNT(e.EmployeeID) AS [Nbr of Employees]
+FROM	WorkCenter_T w, Worksin_T wi, Employee_T e
+WHERE	w.WorkcenterID = wi.WorkcenterID AND wi.EmployeeID = e.EmployeeID
+GROUP BY w.WorkcenterID;
+
+
+--List in alphabetical order the names of all employees (managers) who are now managing people with skillID 'BS12'. List each such manager’s name only once, even if that manager manages several people with this skill:
+
+SELECT DISTINCT M.EmployeeName
+FROM 	Employee_T M, 
+	Employee_T E, 
+	EmployeeSkills_T ES
+WHERE ES.EmployeeID = E.EmployeeID AND 	E.EmployeeSupervisor = M.EmployeeID AND SkillID= 'BS12'
+ORDER BY M.EmployeeName;
+
+--Display the salesperson name, product finish, and total quantity sold (label as TotSales) for each finish by each salesperson:
+
+SELECT SalespersonName, 
+ProductFinish, 
+SUM(OrderedQuantity) AS TotSales
+FROM Salesperson_T s, OrderLine_T ol, Product_T p, Order_T o
+WHERE 	s.SalespersonID = o.SalespersonID AND o.OrderID = ol.OrderID AND ol.ProductID = p.ProductID 
+GROUP BY	SalespersonName, ProductFinish;
+
+--Write a query to list the number of products produced in each work center (label this result ‘TotalProducts’). If a work center does not produce any products, display the result with a total of 0:
+
+SELECT 	wc.WorkCenterID, 
+COUNT(ProductID) AS TotalProducts
+FROM WorkCenter_T wc LEFT OUTER JOIN ProducedIn_T pi
+ON wc.WorkCenterID=pi.WorkCenterID
+GROUP BY wc.WorkCenterID;
+
+--OrderIDs for customers lacking payment:
+/*Two solutions*/
+--Using Left JOIN
+SELECT 	o.OrderID
+FROM	Order_T o LEFT JOIN Payment_T p ON 
+o.OrderID = p.OrderID
+WHERE 	p.PaymentID IS NULL;
+--Using IN 
+SELECT 	o.OrderID
+FROM	Order_T o 
+WHERE	o.OrderID NOT IN (SELECT DISTINCT OrderID FROM Payment_T);
+--Using EXISTS
+SELECT 	o.OrderID
+FROM	Order_T o 
+WHERE	NOT EXISTS (SELECT DISTINCT p.OrderID FROM Payment_T p WHERE p.OrderID=o.OrderID);
+
+--List the  IDs and names of all products that cost less than the average product price in their product line.
+
+SELECT	P.ProductID, P.ProductDescription
+FROM		Product_T P
+WHERE		ProductStandardPrice < (
+	SELECT AVG(ProductStandardPrice)
+	FROM Product_T P1
+	WHERE P1.ProductLineID = P.ProductLineID);
